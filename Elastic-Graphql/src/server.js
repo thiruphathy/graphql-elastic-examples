@@ -33,7 +33,7 @@ app.use(function (req, res, next) {
 });
 
 // Define the `/search` route that should return elastic search results
-app.get('/search', ApiElasticSearchClient);
+// app.get('/search', ApiElasticSearchClient);
 
 server.applyMiddleware({app});
 
