@@ -1,6 +1,5 @@
 const config = require('./config');
 const { Client } = require('@elastic/elasticsearch');
-var quotes = require('./data/quotes.json');
 var fs = require('fs');
 
 var esclient = new Client( {
@@ -24,91 +23,8 @@ var esclient = new Client( {
 const es_index      = config.es_index
 const es_type       = config.es_type
 
-//   /Users/t0p02d0/cert/mx-elk-elastic-search-dev.walmart.com.cer 
-
-/**
- * @function createIndex
- * @returns {void}
- * @description Creates an index in ElasticSearch.
- */
-
-async function createIndex(index) {
-    try {
-  
-      await esclient.indices.create({ index });
-      console.log(`Created index ${index}`);
-  
-    } catch (err) {
-  
-      console.error(`An error occurred while creating the index ${index}:`);
-      console.error(err);
-  
-    }
-  }
-  
-  async function deleteIndex(index) {
-    try {
-  
-      esclient.indices.delete({ index: index}, function (err, resp, status) {
-        if (err) {
-            console.log(err);
-        } else {
-            console.log(status)
-            console.log("delete", resp);
-        }
-    });
-      console.log(`deleteIndex index ${index}`);
-  
-    } catch (err) {
-  
-      console.error(`An error occurred while creating the index ${index}:`);
-      console.error(err);
-  
-    }
-  }
-  
 
 
-  /**
-   * @function setQuotesMapping,
-   * @returns {void}
-   * @description Sets the quotes mapping to the database.
-   */
-  
-  async function setQuotesMapping () {
-    try {
-      const schema = {
-        quote: {
-          type: "text" 
-        },
-        author: {
-          type: "text"
-        }
-      };
-    
-      await esclient.indices.putMapping({ 
-        es_index, 
-        es_type,
-        include_type_name: true,
-        body: { 
-          properties: schema 
-        } 
-      })
-      
-      console.log("Quotes mapping created successfully");
-    
-    } catch (err) {
-      console.error("An error occurred while setting the quotes mapping:");
-      console.error(err);
-    }
-  }
-  
-  /**
-   * @function checkConnection
-   * @returns {Promise<Boolean>}
-   * @description Checks if the client is connected to ElasticSearch
-   */
-  
   function checkConnection() {
     return new Promise(async (resolve) => {
   
@@ -134,35 +50,9 @@ async function createIndex(index) {
   }
 
 
- const esAction = {
-  index: {
-    _index: config.es_index,
-    _type: config.es_type,
-  }
-};
-
-   async function populateDatabase() {
-
-   const docs = [];
-
-   for (const quote of quotes) {
-     docs.push(esAction);
-     docs.push(quote);
-   }
-
-   return esclient.bulk({ body: docs });
-  
- }
-  
 
 
   module.exports = {
     esclient,
-    es_index,
-    es_type,
-    setQuotesMapping,
-    checkConnection,
-    createIndex,
-    deleteIndex,
-    populateDatabase,
+    checkConnection
   };

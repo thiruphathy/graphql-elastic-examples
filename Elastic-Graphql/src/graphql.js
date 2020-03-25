@@ -120,8 +120,8 @@ const typeDefs = `
 
 
   type Query  {
-    searchByOrder(orderNumber : String, enterpriseKey : String): [Orders]
-    searchByEmailID(emailID : String): [Orders]
+    searchByOrder(inputQuery: String, orderNumber : String, enterpriseKey : String): [Orders]
+    searchByEmailID(emailID : String!): [Orders]
   }
 `;
     
@@ -132,7 +132,8 @@ const resolvers = {
 
     
     searchByOrder: (parent, args, context, info) => new Promise((resolve, reject) => {
-      console.log(args.orderNumber, args.enterpriseKey);
+      console.log(args);
+
         ElasticSearchClient("order_pqa_v1",{...elasticSearchSchema.queryOrderNumber(args.orderNumber)})
         .then(r => {
 
