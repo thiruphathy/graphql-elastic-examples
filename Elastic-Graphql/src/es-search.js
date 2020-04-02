@@ -30,8 +30,26 @@ function ElasticSearchClient(index,body) {
 
 }
 
+async function ElasticSearchClientAsync(index,body) {
+
+
+  try {
+    console.log("index" , index);
+
+    // perform the actual search passing in the index, the search query and the type
+    return await esclient.search({index: index, body: body})
+    
+  } catch (err) {
+
+    console.error(`An error occurred while creating the index ${index}:`);
+    console.error(err);
+
+  }
+
+}
 
 
 module.exports = {
-  ElasticSearchClient
+  ElasticSearchClient,
+  ElasticSearchClientAsync
 };

@@ -1,6 +1,11 @@
 const elasticSearchSchema = require('./elastic.schema');
-const {makeExecutableSchema} = require('graphql-tools');
-const {ElasticSearchClient} = require('./es-search');
+const {
+	makeExecutableSchema
+} = require('graphql-tools');
+const {
+  ElasticSearchClient,
+  ElasticSearchClientAsync
+} = require('./es-search');
 
 // Construct a schema, using GraphQL schema language
 const typeDefs = `
@@ -42,12 +47,99 @@ const typeDefs = `
     shipToKey : String,
  
     shippingAddress: Address,
-    billingAddress: Address
+    billingAddress: Address,
 
-    orderlines: [OrderLine]
-    payments: [Payment]
+    orderlines: [OrderLine],
+    payments: [Payment],
+    shipments: [Shipment]
+
 
   }
+
+  type Container {
+    containerNo : String,
+    containerHeight : Int,
+    containerExtnStatus : String,
+    containerExtnSize : String,
+    containerType : String,
+    trackingNo : String,
+    shpContainerModifyTS : String,
+    containerSCM :  String,
+    shipmentContainerKey : String,
+    containerGrossWeight : Float,
+    rejectionReason : String,
+    shpContainerCreateTS : String,
+    containerWidth : Float,
+    shpContainerModifyPID : String,
+    containerLength : Float,
+    actualWeight : Float,
+    shipmentKey : String,
+    containerNetWeight : Float,
+    shipDate : String,
+    containerDetails: [ContainerDetail]
+  }
+
+  type ContainerDetail {
+    itemId : String,
+    orderLineKey : String,
+    quantity : Float,
+    uom : String,
+    containerDetailsKey : String,
+    productClass : String,
+    shipmentLineKey : String
+  }
+
+  type Shipment {
+    orderNumber : String,
+    deliveryMethod : String,
+    enterpriseCode : String,
+    tcNumber : String,
+    shipmentModifyPID : String,
+    shipmentType : String ,
+    statusDate : String,
+    scac : String,
+    requestedShipmentDate : String,
+    actualShipmentDate : String,
+    shipmentTrackingNo : String,
+    actualDeliveryDate : String,
+    customerKeepFlag : String,
+    shipmentModifyTS : String,
+    shipVia :  String,
+    shipmentNo : String,
+    shipToAddressKey : String,
+    shipmentCreateTS : String,
+    documentType : String,
+    receivingNode : String,
+    sellerOrganizationCode : String,
+    requestedDeliveryDate : String,
+    orderHeaderKey : String,
+    shipNodeKey : String,
+    trNumber : String,
+    status : String,
+    shipmentKey : String,
+    trackingURL : String,
+    carrierServiceCode : String,
+    shippingAddress:Address,
+    shipmentLines: [ShipmentLine],
+    containers: [Container]
+  }
+
+  
+  type ShipmentLine {
+    shipmentLineCreateTS : String,
+    itemDescription : String,
+    quantity : Float,
+    productClass : String,
+    originalQty : Float,
+    itemId : String,
+    orderLineKey : String,
+    primeLineNo : Int,
+    shipmentLineNo : Int,
+    uom : String,
+    shipmentLineModifyTS : String,
+    shipmentLineModifyPID : String,
+    shipmentLineKey : String
+    }
 
   type Payment {
       paymentOption: String,
@@ -120,78 +212,119 @@ const typeDefs = `
 
 
   type Query  {
-    searchByOrder(inputQuery: String, orderNumber : String, enterpriseKey : String): [Orders]
-    searchByEmailID(emailID : String!): [Orders]
+     searchByQuery(inQuery : String!): [Orders]
+    searchByOrder(orderNumber : String!, enterpriseKey : String): [Orders]
+     searchByEmailID(emailID : String!): [Orders]
   }
 `;
-    
+
+
 // The root provides a resolver function for each API endpoint
 const resolvers = {
 
-  Query: {
+	Query: {
 
-    
-    searchByOrder: (parent, args, context, info) => new Promise((resolve, reject) => {
-      console.log(args);
+		searchByQuery: (parent, args, context, info) => new Promise((resolve, reject) => {
+			console.log(args);
+			var str = '{ "name": "John Doe", "age": 42 }';
+			var obj1 = JSON.parse(str);
+			console.log(obj1);
+			var obj2 = JSON.parse(JSON.stringify(args));
+			console.log(obj2);
 
-        ElasticSearchClient("order_pqa_v1",{...elasticSearchSchema.queryOrderNumber(args.orderNumber)})
-        .then(r => {
+		}),
+		searchByOrder: (parent, args, context, info) => new Promise((resolve, reject) => {
+			console.log(args);
 
-          let _source = r.body.hits.hits;
-          _source.map((item, i) => _source[i] = item._source);
+			ElasticSearchClient("order_pqa_v1", { ...elasticSearchSchema.queryOrderNumber(args.orderNumber)
+				})
+				.then(r => {
 
-          return _source;
-          // resolve(_source);
-        }).then (_orderSource => {
+					let _source = r.body.hits.hits;
+					_source.map((item, i) => _source[i] = item._source);
+
+					return _source;
+					// resolve(_source);
+				}).then(_orderSource => {
           let orderHeaderKey = _orderSource[0].orderHeaderKey;
-
-          return ElasticSearchClient("orderline_pqa_v1",{...elasticSearchSchema.queryOrderHeaderKey(orderHeaderKey)})
-          .then(
-            
-                result => {
-
-              let _olsource = result.body.hits.hits;
-              _olsource.map((item, i) => {
-                
+          return ElasticSearchClient("orderline_pqa_v1", { ...elasticSearchSchema.queryOrderHeaderKey(orderHeaderKey)
+            })
+            .then(
+              result => {
+                let _olsource = result.body.hits.hits;
+                _olsource.map((item, i) => {
                   _olsource[i] = item._source
+                });
+                return {
+                  "parent": _orderSource,
+                  "child": _olsource
                 }
-              );
-          
-              return { "parent" : _orderSource,
-                        "child": _olsource
-                      }
 
-            } 
-          );
-                     
-          // resolve(_source);
+              }
+            );
+        }).then(olres => {
+          olres.parent[0].orderlines = olres.child;
+          return olres.parent;
+        })
+        .then(_orderSource => {
+          let orderHeaderKey = _orderSource[0].orderHeaderKey;
+          return ElasticSearchClient("shipment_pqa_v1", { ...elasticSearchSchema.queryOrderHeaderKey(orderHeaderKey)
+            })
+            .then(
+              result => {
+                let _shipsource = result.body.hits.hits;
+                _shipsource.map((item, i) => {
+                _shipsource[i] = item._source
+                var shipmentKey = item._source.shipmentKey;
+                const containerFuntion = async () => await ElasticSearchClientAsync("shipment_container_pqa_v1", { ...elasticSearchSchema.queryShipmentKey(shipmentKey)
+                    });
+                      // let _containerSource = res.body.hits.hits;
+                      //     _containerSource.map((item, i) => {
+                      //         _containerSource[i] = item._source
+                      //       }
+                      //     );
+                      //     _shipsource[i].containers= _containerSource
+                      //     console.log("res-res-1:", _shipsource[i]);
+                      //     temp_containerSource=_containerSource;
+                      //     return _shipsource[i];
+                          // return temp_containerSource=_containerSource;
+                      let containerResult = containerFuntion().resolve;
+                      console.log("temp_containerSource-1:", containerResult);  
+                  }
+                );
+                console.log("shipres-0: child", _shipsource[0].containers);
+                return {
+                  "parent": _orderSource,
+                  "child": _shipsource
+                }
+                });
+               
 
-        }).then (olres => {
-          console.log("olres: parent" , olres.parent);
-          console.log("olres: child" , olres.child);
-
-          olres.parent[0].orderlines=olres.child;
-
-          resolve(olres.parent);
+        }).then(shipres => {
+          // console.log("shipres:", shipres);
+          console.log("shipres-1: child", shipres.child);
+          shipres.parent[0].shipments = shipres.child;
+          resolve(shipres.parent);
         });
     }),
 
 
-    searchByEmailID: (parent, args, context, info) => new Promise((resolve, reject) => {
-      console.log(args.emailID, args.enterpriseKey);
-        ElasticSearchClient("order_pqa_v1",{...elasticSearchSchema})
-        .then(r => {
-            // console.log(r.body.hits.hits);
-          let _source = r.body.hits.hits;
-              _source.map((item, i) => _source[i] = item._source);
-          resolve(_source);
-        });
-    }),
-     
-  }
+		searchByEmailID: (parent, args, context, info) => new Promise((resolve, reject) => {
+			console.log(args.emailID, args.enterpriseKey);
+			ElasticSearchClient("order_pqa_v1", { ...elasticSearchSchema
+				})
+				.then(r => {
+					// console.log(r.body.hits.hits);
+					let _source = r.body.hits.hits;
+					_source.map((item, i) => _source[i] = item._source);
+					resolve(_source);
+				});
+		})
+
+	}
 };
 
 module.exports = makeExecutableSchema({
-  "typeDefs": [typeDefs],
-  "resolvers": resolvers
+	"typeDefs": [typeDefs],
+	"resolvers": resolvers
 });
