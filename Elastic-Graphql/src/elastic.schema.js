@@ -30,24 +30,6 @@ function queryOLIndex(inputjson) {
   
 }
 
-
-function getElasticQuery(inputjson){
-
-  let arr = Object.keys(inputjson)
-  let output = {}
-  let myJson1 = []
-  let myJson2 = {}
-  for (let i in arr) {
-      myJson2 = {}, myJson1 = {}
-      myJson2[arr[i]] = input[arr[i]]
-      myJson1 = { "bool": {"should": [{ "match_phrase": myJson2 }], "minimum_should_match": 1 }}
-      arr[i] = myJson1
-  }
-  output = {"query": { "bool": { "must": [], "filter": [{"bool": {"filter": arr } }], "should": [],"must_not": []}}}
-  console.log((output));
-  return output
-  
-  }
   
 function queryOrderHeaderKey(orderHeaderKey) {
   try {

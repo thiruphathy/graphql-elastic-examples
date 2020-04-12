@@ -12,7 +12,7 @@ const {
 
 // Construct a schema, using GraphQL schema language
 const typeDefs = `
-  type Orders {
+  type Order {
     orderNumber:String,
     orderHeaderKey: String,
     customerFirstName: String,
@@ -215,15 +215,23 @@ const typeDefs = `
 
 
   type Query  {
-    searchByQuery(inQuery : String!): [Orders]
-    searchByOrder(orderNumber : String!, enterpriseKey : String): [Orders]
-    searchByEmailID(emailID : String!): [Orders]
+    searchByQuery(inQuery : String!): [Order]
+    searchByOrder(orderNumber : String!, enterpriseKey : String): [Order]
+    searchByEmailID(emailID : String!): [Order]
   }
 
 
+  type Mutation {
+    updateOrder(orderNumber : String!, enterpriseKey : String): [Order]
+  } 
 
 `;
 
+/**
+ * 
+ *  
+ *  
+ */
 
 // The root provides a resolver function for each API endpoint
 const resolvers = {
@@ -274,7 +282,31 @@ const resolvers = {
 					resolve(_source);
 				});
 		})
-  }
+  } ,
+  
+  Mutation: {
+    updateOrder: (parent, args, context, info) => 
+      (async () => {
+        const orderIndex = await ElasticSearchClient('order_pqa_v1', { ...elasticSearchSchema.queryOrderNumber(args.orderNumber)});
+
+        let _source = orderIndex.body.hits.hits;
+        _source.map((item, i) => {
+          _source[i] = item._source
+        });
+	      console.log("_source:" ,_source[0].orderHeaderKey);
+        // const books = await doBooks(_source);
+        _source[0].orderlines = await getOrderLines(_source[0].orderHeaderKey);
+
+        _source[0].shipments = await getShipments(_source[0].orderHeaderKey);
+
+        return new Promise(async (resolve) => {
+          resolve(_source);
+        });
+
+      })(),
+  },
+
+
 };
 
 
