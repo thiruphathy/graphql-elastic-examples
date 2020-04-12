@@ -1,7 +1,10 @@
 const elasticSearchSchema = require('./elastic.schema');
+
 const {
 	makeExecutableSchema
 } = require('graphql-tools');
+
+
 const {
   ElasticSearchClient,
   ElasticSearchClientAsync
@@ -212,15 +215,19 @@ const typeDefs = `
 
 
   type Query  {
-     searchByQuery(inQuery : String!): [Orders]
+    searchByQuery(inQuery : String!): [Orders]
     searchByOrder(orderNumber : String!, enterpriseKey : String): [Orders]
-     searchByEmailID(emailID : String!): [Orders]
+    searchByEmailID(emailID : String!): [Orders]
   }
+
+
+
 `;
 
 
 // The root provides a resolver function for each API endpoint
 const resolvers = {
+
 
 	Query: {
 
@@ -232,81 +239,28 @@ const resolvers = {
 			var obj2 = JSON.parse(JSON.stringify(args));
 			console.log(obj2);
 
-		}),
-		searchByOrder: (parent, args, context, info) => new Promise((resolve, reject) => {
-			console.log(args);
-
-			ElasticSearchClient("order_pqa_v1", { ...elasticSearchSchema.queryOrderNumber(args.orderNumber)
-				})
-				.then(r => {
-
-					let _source = r.body.hits.hits;
-					_source.map((item, i) => _source[i] = item._source);
-
-					return _source;
-					// resolve(_source);
-				}).then(_orderSource => {
-          let orderHeaderKey = _orderSource[0].orderHeaderKey;
-          return ElasticSearchClient("orderline_pqa_v1", { ...elasticSearchSchema.queryOrderHeaderKey(orderHeaderKey)
-            })
-            .then(
-              result => {
-                let _olsource = result.body.hits.hits;
-                _olsource.map((item, i) => {
-                  _olsource[i] = item._source
-                });
-                return {
-                  "parent": _orderSource,
-                  "child": _olsource
-                }
-
-              }
-            );
-        }).then(olres => {
-          olres.parent[0].orderlines = olres.child;
-          return olres.parent;
-        })
-        .then(_orderSource => {
-          let orderHeaderKey = _orderSource[0].orderHeaderKey;
-          return ElasticSearchClient("shipment_pqa_v1", { ...elasticSearchSchema.queryOrderHeaderKey(orderHeaderKey)
-            })
-            .then(
-              result => {
-                let _shipsource = result.body.hits.hits;
-                _shipsource.map((item, i) => {
-                _shipsource[i] = item._source
-                var shipmentKey = item._source.shipmentKey;
-                const containerFuntion = async () => await ElasticSearchClientAsync("shipment_container_pqa_v1", { ...elasticSearchSchema.queryShipmentKey(shipmentKey)
-                    });
-                      // let _containerSource = res.body.hits.hits;
-                      //     _containerSource.map((item, i) => {
-                      //         _containerSource[i] = item._source
-                      //       }
-                      //     );
-                      //     _shipsource[i].containers= _containerSource
-                      //     console.log("res-res-1:", _shipsource[i]);
-                      //     temp_containerSource=_containerSource;
-                      //     return _shipsource[i];
-                          // return temp_containerSource=_containerSource;
-                      let containerResult = containerFuntion().resolve;
-                      console.log("temp_containerSource-1:", containerResult);  
-                  }
-                );
-                console.log("shipres-0: child", _shipsource[0].containers);
-                return {
-                  "parent": _orderSource,
-                  "child": _shipsource
-                }
-                });
-               
-
-        }).then(shipres => {
-          // console.log("shipres:", shipres);
-          console.log("shipres-1: child", shipres.child);
-          shipres.parent[0].shipments = shipres.child;
-          resolve(shipres.parent);
-        });
     }),
+    
+
+		searchByOrder: (parent, args, context, info) => 
+      (async () => {
+        const orderIndex = await ElasticSearchClient('order_pqa_v1', { ...elasticSearchSchema.queryOrderNumber(args.orderNumber)});
+
+        let _source = orderIndex.body.hits.hits;
+        _source.map((item, i) => {
+          _source[i] = item._source
+        });
+	      console.log("_source:" ,_source[0].orderHeaderKey);
+        // const books = await doBooks(_source);
+        _source[0].orderlines = await getOrderLines(_source[0].orderHeaderKey);
+
+        _source[0].shipments = await getShipments(_source[0].orderHeaderKey);
+
+        return new Promise(async (resolve) => {
+          resolve(_source);
+        });
+
+      })(),
 
 
 		searchByEmailID: (parent, args, context, info) => new Promise((resolve, reject) => {
@@ -315,16 +269,96 @@ const resolvers = {
 				})
 				.then(r => {
 					// console.log(r.body.hits.hits);
-					let _source = r.body.hits.hits;
+					var _source = r.body.hits.hits;
 					_source.map((item, i) => _source[i] = item._source);
 					resolve(_source);
 				});
 		})
-
-	}
+  }
 };
+
+
+async function getOrderLines(orderHeaderKey) {
+  return new Promise(async (resolve) => {
+    // for (element of elements) {
+      try {
+        console.log("printting the orderHeaderKey" + orderHeaderKey);
+        const orderLinesIndex = await ElasticSearchClient("orderline_pqa_v1", { ...elasticSearchSchema.queryOrderHeaderKey(orderHeaderKey) })
+
+        var _source1 = orderLinesIndex.body.hits.hits;
+        _source1.map((item, i) => {
+          _source1[i] = item._source
+        });
+        //call  the other async function
+        // element.authorBooks = await doPublication(_source1);
+        resolve(_source1);
+      } catch (err) {
+        console.error("An error occurred while getting the books mapping:");
+        console.error(err);
+      }
+    // }
+    // resolve(elements);
+  });
+}
+
+
+async function getContainers(shipments) {
+  return new Promise(async (resolve) => {
+    for (element of shipments) {
+      try {
+        console.log("printting the shipmentKey" + element.shipmentKey);
+        const containersIndex = await ElasticSearchClientAsync("shipment_container_pqa_v1", { ...elasticSearchSchema.queryShipmentKey(element.shipmentKey) })
+
+        var _source1 = containersIndex.body.hits.hits;
+        _source1.map((item, i) => {
+          _source1[i] = item._source
+        });
+        //call  the other async function
+        element.containers = _source1;
+        // resolve(_source1);
+      } catch (err) {
+        console.error("An error occurred while getting the books mapping:");
+        console.error(err);
+      }
+    }
+    resolve(shipments);
+  });
+}
+
+async function getShipments(orderHeaderKey) {
+  return new Promise(async (resolve) => {
+    // for (element of elements) {
+      try {
+        console.log("printting the orderHeaderKey" + orderHeaderKey);
+        const shipmentsIndex = await ElasticSearchClient("shipment_pqa_v1", { ...elasticSearchSchema.queryOrderHeaderKey(orderHeaderKey) })
+
+        var _source1 = shipmentsIndex.body.hits.hits;
+        _source1.map((item, i) => {
+          _source1[i] = item._source
+        });
+        //call  the other async function
+        // element.authorBooks = await doPublication(_source1);
+
+        // _source[0].shipments = await getShipments(_source[0].orderHeaderKey);
+// shipmentKey
+        // _source1 = await _source1.forEach(async (element) => {
+        //   element.containers = await getContainers(element.shipmentKey);
+        // });  
+
+        _source1 = await getContainers(_source1)
+
+        resolve(_source1);
+      } catch (err) {
+        console.error("An error occurred while getting the books mapping:");
+        console.error(err);
+      }
+    // }
+    // resolve(elements);
+  });
+}
+
 
 module.exports = makeExecutableSchema({
 	"typeDefs": [typeDefs],
-	"resolvers": resolvers
+  "resolvers": resolvers,
 });

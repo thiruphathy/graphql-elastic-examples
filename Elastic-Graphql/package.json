@@ -10,13 +10,18 @@
   "license": "ISC",
   "dependencies": {
     "@elastic/elasticsearch": "^7.5.0",
-    "apollo-server-express": "^2.9.16",
+    "@nestjs/graphql": "^7.2.1",
+    "apollo-server": "^2.11.0",
+    "apollo-server-express": "^2.12.0",
     "body-parser": "^1.19.0",
     "cors": "^2.8.5",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "express-graphql": "^0.9.0",
-    "graphql": "^14.5.8",
-    "graphql-tools": "^4.0.6"
+    "graphql": "^14.6.0",
+    "graphql-subscriptions": "^1.1.0",
+    "graphql-tools": "^4.0.7",
+    "graphql-yoga": "^1.18.3",
+    "subscriptions-transport-ws": "^0.9.16"
   }
 }

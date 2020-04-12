@@ -1,0 +1,42 @@
+GET _search
+  {
+      "query": {
+    "bool": {
+      "must": [],
+      "filter": [
+        {
+          "bool": {
+            "filter": [
+              {
+                "bool": {
+                  "should": [
+                    {
+                      "match_phrase": {
+                        "orderHeaderKey": "20170517174417710951"
+                      }
+                    }
+                  ],
+                  "minimum_should_match": 1
+                }
+              },
+              {
+                "bool": {
+                  "should": [
+                    {
+                      "match_phrase": {
+                        "itemId": "000916380"
+                      }
+                    }
+                  ],
+                  "minimum_should_match": 1
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "should": [],
+      "must_not": []
+    }
+  }
+  }
