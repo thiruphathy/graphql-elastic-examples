@@ -1,9 +1,12 @@
 const elasticSearchSchema = require('./elastic.schema');
+const {gql, PubSub, withFilter } = require('apollo-server');
 
 const {
 	makeExecutableSchema
 } = require('graphql-tools');
 
+
+const pubsub = new PubSub();
 
 const {
   ElasticSearchClient,
@@ -223,15 +226,14 @@ const typeDefs = `
 
   type Mutation {
     updateOrder(orderNumber : String!, enterpriseKey : String): [Order]
+    triggerOrderMod(orderNumber : String!, enterpriseKey : String): [Order]
   } 
+  
+  type Subscription {
+    orderModSub(orderNumber : String!, enterpriseKey : String): [Order]
+  }
 
 `;
-
-/**
- * 
- *  
- *  
- */
 
 // The root provides a resolver function for each API endpoint
 const resolvers = {
@@ -259,7 +261,7 @@ const resolvers = {
           _source[i] = item._source
         });
 	      console.log("_source:" ,_source[0].orderHeaderKey);
-        // const books = await doBooks(_source);
+
         _source[0].orderlines = await getOrderLines(_source[0].orderHeaderKey);
 
         _source[0].shipments = await getShipments(_source[0].orderHeaderKey);
@@ -294,19 +296,68 @@ const resolvers = {
           _source[i] = item._source
         });
 	      console.log("_source:" ,_source[0].orderHeaderKey);
-        // const books = await doBooks(_source);
+
         _source[0].orderlines = await getOrderLines(_source[0].orderHeaderKey);
 
         _source[0].shipments = await getShipments(_source[0].orderHeaderKey);
+
+        pubsub.publish("orderModSub", { orderModSub: new Promise(async (resolve) => {
+          resolve(_source);
+        }) });
 
         return new Promise(async (resolve) => {
           resolve(_source);
         });
 
       })(),
+      triggerOrderMod: (parent, args, context, info) => 
+      (async () => {
+        const orderIndex = await ElasticSearchClient('order_pqa_v1', { ...elasticSearchSchema.queryOrderNumber(args.orderNumber)});
+
+        let _source = orderIndex.body.hits.hits;
+        _source.map((item, i) => {
+          _source[i] = item._source
+        });
+	      console.log("_source:" ,_source[0].orderHeaderKey);
+ 
+        _source[0].orderlines = await getOrderLines(_source[0].orderHeaderKey);
+
+        _source[0].shipments = await getShipments(_source[0].orderHeaderKey);
+
+        // pubsub.publish("orderModSub", { orderModSub: new Promise(async (resolve) => {
+        //   console.log("result.orderNumber:" ,_source[0].orderNumber);
+        //   var obj={parentOrderNumber:_source[0].orderNumber,parent:_source};
+        //   obj.parent.parentOrderNumber=_source[0].orderNumber;
+        //   resolve(obj.parent);
+        // }) });
+
+        const payload = {
+          orderModSub: {
+              source: _source,
+          }
+        };
+
+        pubsub.publish("orderModSub",  {orderModSub:_source});
+        
+      })(),
   },
 
+  Subscription: {
+    orderModSub: {
+      subscribe: withFilter(
+        () => pubsub.asyncIterator("orderModSub"),
+        (parent, args, context, info) => {
+          console.log("args.orderNumber:" ,args.orderNumber);
+          if(parent.orderModSub[0].orderNumber==args.orderNumber){
+            return true;
+          }else {
+            return false
+          }
+        }
+      ),
 
+    }
+  }
 };
 
 
@@ -368,14 +419,6 @@ async function getShipments(orderHeaderKey) {
         _source1.map((item, i) => {
           _source1[i] = item._source
         });
-        //call  the other async function
-        // element.authorBooks = await doPublication(_source1);
-
-        // _source[0].shipments = await getShipments(_source[0].orderHeaderKey);
-// shipmentKey
-        // _source1 = await _source1.forEach(async (element) => {
-        //   element.containers = await getContainers(element.shipmentKey);
-        // });  
 
         _source1 = await getContainers(_source1)
 

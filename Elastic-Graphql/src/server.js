@@ -5,14 +5,23 @@ const path = require('path');
 const {ApolloServer} = require('apollo-server-express');
 const {ApiElasticSearchClient} = require('./es-search');
 const madeExecutableSchema = require('./graphql');
+const http = require('http');
+
+const {gql, PubSub, withFilter } = require('apollo-server');
 
 // PORT
 const PORT = 9100;
+const HTTPPORT = 9101;
 
 const server = new ApolloServer({
   schema: madeExecutableSchema,
   playground: true,
+  subscriptions:true
 });
+
+
+const pubsub = new PubSub();
+
 
 function start(){
 // TODO Use the BodyParser as a middleware
@@ -43,6 +52,17 @@ app.listen(PORT, function () {
 
 return app;
 }
+
+
+const httpServer = http.createServer(app);
+server.installSubscriptionHandlers(httpServer);
+
+
+httpServer.listen({ port:  HTTPPORT}, () => {
+  console.log(`🚀 Server ready at http://localhost:${HTTPPORT}${server.graphqlPath}`);
+  console.log(`🚀 Subscriptions ready at ws://localhost:${HTTPPORT}${server.subscriptionsPath}`);
+});
+
 
 module.exports ={
     start
