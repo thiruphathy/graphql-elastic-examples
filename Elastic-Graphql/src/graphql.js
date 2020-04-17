@@ -1,5 +1,6 @@
 const elasticSearchSchema = require('./elastic.schema');
 const {gql, PubSub, withFilter } = require('apollo-server');
+const { KafkaPubSub } = require('graphql-kafka-subscriptions');
 
 const {
 	makeExecutableSchema
@@ -8,6 +9,23 @@ const {
 
 const pubsub = new PubSub();
 
+const kafkaPubSubIn = new KafkaPubSub({
+  topic: 'gqlinput',
+  host: 'localhost',
+  port: '9092',
+   
+})
+
+// const kafkaPubSubOut = new KafkaPubSub({
+//   topic: 'gqloutput',
+//   host: 'localhost',
+//   port: '9092',
+   
+// })
+
+// const kafkaPubSubInSubscription = kafkaPubSubIn.subscribe('orderModSub', 'onMessage')
+ 
+ 
 const {
   ElasticSearchClient,
   ElasticSearchClientAsync
@@ -231,6 +249,7 @@ const typeDefs = `
   
   type Subscription {
     orderModSub(orderNumber : String!, enterpriseKey : String): [Order]
+    orderModSubViaKafka(orderNumber : String!, enterpriseKey : String): [Order]
   }
 
 `;
@@ -301,9 +320,9 @@ const resolvers = {
 
         _source[0].shipments = await getShipments(_source[0].orderHeaderKey);
 
-        pubsub.publish("orderModSub", { orderModSub: new Promise(async (resolve) => {
-          resolve(_source);
-        }) });
+
+        pubsub.publish("orderModSub",  {orderModSub:_source});
+        // kafkaPubSubOut.publish({orderModSubViaKafka:_source});
 
         return new Promise(async (resolve) => {
           resolve(_source);
@@ -324,14 +343,9 @@ const resolvers = {
 
         _source[0].shipments = await getShipments(_source[0].orderHeaderKey);
 
-        const payload = {
-          orderModSub: {
-              source: _source,
-          }
-        };
-
         pubsub.publish("orderModSub",  {orderModSub:_source});
-        
+        // kafkaPubSubOut.publish({orderModSubViaKafka:_source});
+
       })(),
   },
 
@@ -348,11 +362,60 @@ const resolvers = {
           }
         }
       ),
+    },
+    orderModSubViaKafka:{ 
+      resolve: (payload) => {
+        console.log('PAYLOAD1', payload);
+         return new Promise(async (resolve) => { 
+          let orderData = await getOrderData(payload.orderNumber) 
+          console.log('orderData', orderData);
+          resolve(orderData);
+        });
 
+      },
+      subscribe: withFilter(
+        () => kafkaPubSubIn.asyncIterator('gqlinput'),
+        (parent, args, context, info) => {
+          console.log("args.orderNumber:" ,args.orderNumber);
+          console.log("parent.orderNumber:" ,parent.orderNumber);
+          if(parent.orderNumber==args.orderNumber){
+            return true;
+          }else {
+            return false
+          }
+        }
+      )
     }
   }
 };
+ 
 
+ 
+async function getOrderData(orderNumber){
+  return new Promise(async (resolve) => {
+      // for (element of elements) {
+    try {
+        const orderIndex = await ElasticSearchClient('order_pqa_v1', { ...elasticSearchSchema.queryOrderNumber(orderNumber)});
+
+        let _source = orderIndex.body.hits.hits;
+        _source.map((item, i) => {
+          _source[i] = item._source
+        });
+        console.log("_source:" ,_source[0].orderHeaderKey);
+
+        _source[0].orderlines = await getOrderLines(_source[0].orderHeaderKey);
+
+        _source[0].shipments = await getShipments(_source[0].orderHeaderKey);
+        
+        resolve(_source);
+      } catch (err) {
+        console.error("An error occurred while getting the books mapping:");
+        console.error(err);
+      }
+  // }
+  // resolve(elements);
+  });
+}
 
 async function getOrderLines(orderHeaderKey) {
   return new Promise(async (resolve) => {

@@ -6,8 +6,10 @@ const {ApolloServer} = require('apollo-server-express');
 const {ApiElasticSearchClient} = require('./es-search');
 const madeExecutableSchema = require('./graphql');
 const http = require('http');
-
 const {gql, PubSub, withFilter } = require('apollo-server');
+
+
+
 
 // PORT
 const PORT = 9100;
@@ -18,10 +20,6 @@ const server = new ApolloServer({
   playground: true,
   subscriptions:true
 });
-
-
-const pubsub = new PubSub();
-
 
 function start(){
 // TODO Use the BodyParser as a middleware
