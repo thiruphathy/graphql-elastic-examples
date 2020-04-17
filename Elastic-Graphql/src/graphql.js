@@ -324,13 +324,6 @@ const resolvers = {
 
         _source[0].shipments = await getShipments(_source[0].orderHeaderKey);
 
-        // pubsub.publish("orderModSub", { orderModSub: new Promise(async (resolve) => {
-        //   console.log("result.orderNumber:" ,_source[0].orderNumber);
-        //   var obj={parentOrderNumber:_source[0].orderNumber,parent:_source};
-        //   obj.parent.parentOrderNumber=_source[0].orderNumber;
-        //   resolve(obj.parent);
-        // }) });
-
         const payload = {
           orderModSub: {
               source: _source,
