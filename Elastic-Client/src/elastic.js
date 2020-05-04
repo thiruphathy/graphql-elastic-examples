@@ -5,11 +5,11 @@ var fs = require('fs');
 var esclient = new Client( {
   requestTimeout: 5000,
   node: {
-    url: new URL(`https://${config.es_host}:${config.es_port}`),
+    url: new URL(`http://${config.es_host}:${config.es_port}`),
   },
   auth: {
-    username: config.es_user,
-    password: config.es_pass,
+    // username: config.es_user,
+    // password: config.es_pass,
   },
   ssl: {
       // Load the CA pem as well as the intermediate root pem
@@ -21,7 +21,7 @@ var esclient = new Client( {
         //   ],
 
       // This ensures that certificates that are not signed by the 'ca' above get rejected
-      rejectUnauthorized: false
+      // rejectUnauthorized: false
   }
 });
 

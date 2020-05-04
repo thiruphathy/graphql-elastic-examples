@@ -1,0 +1,19 @@
+{
+  "name": "elastic-client",
+  "version": "1.0.0",
+  "description": "This is an tutorial project",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Thi",
+  "license": "ISC",
+  "dependencies": {
+    "@elastic/elasticsearch": "^7.5.0",
+    "elastic-builder": "^2.6.1",
+    "body-parser": "^1.19.0",
+    "bunyan": "^1.8.12",
+    "cors": "^2.8.5",
+    "dotenv": "^8.2.0"
+  }
+}

@@ -1,7 +1,90 @@
-Order				
----orderLines			
-------orderline		
----shipments			
-------shipment		
----------containers	
-------------container
+{
+  "orders":[
+    {
+      "emailID":"walmexwhitelist@walmart.com", 
+      "orderNumber": "100010725044",
+      "orderLines":[
+          {
+            "lineSeqNo": "1.1",
+            "itemId": "00750222216335"
+          },
+          {
+            "lineSeqNo": "5.1",
+            "itemId": "00697039064008"
+          }
+      ],
+      "shipments": [
+        {
+          "shipNodeKey": "DC_5468",
+          "shipmentNo": "777856210",
+          "containers":[
+            {
+              "containerNo": "100045413",
+              "trackingNo": "11332550005"
+            }
+          ]
+        },
+        { 
+          "shipmentNo": "777856211",
+          "containers":[
+            {
+              "containerNo": "100045399" 
+            }
+          ]
+        }  
+      ]
+    }
+  ]
+}
+
+
+1) 
+{
+  "orders":[
+    {
+    "emailID":"walmexwhitelist@walmart.com", 
+    "orderNumber": "100010725044",
+    }
+  ]
+}
+
+
+2) 
+{
+  "orderLines": [
+    {
+      "lineSeqNo": "1.1",
+      "itemId": "00750222216335"
+    },
+    {
+      "lineSeqNo": "5.1",
+      "itemId": "00697039064008"
+    }
+  ]
+}
+
+3) 
+{
+  "shipments": [
+    {
+      "shipNodeKey": "DC_5468",
+      "shipmentNo": "777856210"
+    },
+    {
+      "shipmentNo": "777856211"
+    }
+  ]
+}
+4) 
+{
+  "containers": [
+    {
+      "containerNo": "100045413",
+      "trackingNo": "11332550005"
+    },
+    {
+      "containerNo": "100045399" 
+    }
+  ]
+}
+

@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "Thiyagu",
+  "author": "Thi",
   "license": "ISC",
   "dependencies": {
     "@elastic/elasticsearch": "^7.5.0",
@@ -17,6 +17,7 @@
     "bunyan": "^1.8.12",
     "cors": "^2.8.5",
     "dotenv": "^8.2.0",
+    "elastic-builder": "^2.6.1",
     "express": "^4.17.1",
     "express-graphql": "^0.9.0",
     "graphql": "^14.6.0",

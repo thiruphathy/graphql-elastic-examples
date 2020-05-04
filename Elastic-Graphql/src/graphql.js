@@ -7,6 +7,11 @@ const {
 } = require('graphql-tools');
 
 
+const {
+  ElasticSearchClient,
+  ElasticSearchClientAsync
+} = require('./es-search');
+
 const pubsub = new PubSub();
 
 const kafkaPubSubIn = new KafkaPubSub({
@@ -16,20 +21,12 @@ const kafkaPubSubIn = new KafkaPubSub({
    
 })
 
-// const kafkaPubSubOut = new KafkaPubSub({
-//   topic: 'gqloutput',
-//   host: 'localhost',
-//   port: '9092',
+const kafkaPubSubOut = new KafkaPubSub({
+  topic: 'gqloutput',
+  host: 'localhost',
+  port: '9092',
    
-// })
-
-// const kafkaPubSubInSubscription = kafkaPubSubIn.subscribe('orderModSub', 'onMessage')
- 
- 
-const {
-  ElasticSearchClient,
-  ElasticSearchClientAsync
-} = require('./es-search');
+})
 
 // Construct a schema, using GraphQL schema language
 const typeDefs = `
@@ -236,7 +233,7 @@ const typeDefs = `
 
 
   type Query  {
-    searchByQuery(inQuery : String!): [Order]
+    getOrders(inQuery : String!): [Order]
     searchByOrder(orderNumber : String!, enterpriseKey : String): [Order]
     searchByEmailID(emailID : String!): [Order]
   }
@@ -260,7 +257,7 @@ const resolvers = {
 
 	Query: {
 
-		searchByQuery: (parent, args, context, info) => new Promise((resolve, reject) => {
+		getOrders: (parent, args, context, info) => new Promise((resolve, reject) => {
 			console.log(args);
 			var str = '{ "name": "John Doe", "age": 42 }';
 			var obj1 = JSON.parse(str);
@@ -269,6 +266,8 @@ const resolvers = {
 			console.log(obj2);
 
     }),
+    
+
     
 
 		searchByOrder: (parent, args, context, info) => 
@@ -368,10 +367,10 @@ const resolvers = {
         console.log('PAYLOAD1', payload);
          return new Promise(async (resolve) => { 
           let orderData = await getOrderData(payload.orderNumber) 
-          console.log('orderData', orderData);
+          // console.log('orderData', orderData);
+          // kafkaPubSubOut.publish({orderModSubViaKafka:orderData});
           resolve(orderData);
         });
-
       },
       subscribe: withFilter(
         () => kafkaPubSubIn.asyncIterator('gqlinput'),
@@ -390,7 +389,6 @@ const resolvers = {
 };
  
 
- 
 async function getOrderData(orderNumber){
   return new Promise(async (resolve) => {
       // for (element of elements) {
@@ -422,7 +420,7 @@ async function getOrderLines(orderHeaderKey) {
     // for (element of elements) {
       try {
         console.log("printting the orderHeaderKey" + orderHeaderKey);
-        const orderLinesIndex = await ElasticSearchClient("orderline_pqa_v1", { ...elasticSearchSchema.queryOrderHeaderKey(orderHeaderKey) })
+        const orderLinesIndex = await ElasticSearchClient("orderline_pqa_v1", { ...elasticSearchSchema.queryOLIndex(orderHeaderKey) })
 
         var _source1 = orderLinesIndex.body.hits.hits;
         _source1.map((item, i) => {
